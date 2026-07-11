@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fbf8ff;
+  --foreground: #191b25;
+
+  --surface: #ffffff;
+  --surface-secondary: #f8fafc;
+
+  --footer-background: #e1e1ef;
+
+  --primary: #003ec7;
+  --primary-hover: #002b7f;
+
+  --border: #e1e1ef;
+
+  --muted: #737688;
+
+  --success: #10b981;
+
+  --radius: 12px;
+}
+
+.dark {
+  --background: #020617;
+  --foreground: #f8fafc;
+
+  --surface: #0f172a;
+  --surface-secondary: #1e293b;
+
+  --primary: #0052ff;
+  --primary-hover: #2563eb;
+
+  --border: #334155;
+
+  --muted: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Inter, sans-serif;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  text-decoration: none;
+}
+
+.section-default {
+  background: var(--background);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.dark img {
+  opacity: 0.92;
+}
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(12px);
+}
+
+input,
+textarea,
+select {
+  background: var(--surface);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgb(0 62 199 / 15%);
+}
