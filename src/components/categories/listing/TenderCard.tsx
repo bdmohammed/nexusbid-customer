@@ -160,7 +160,7 @@ export default function TenderCard({ tender, categorySlug }: TenderCardProps) {
         </div>
 
         <Link
-          href={`/categories/${categorySlug}/${tender.slug}`}
+          href={`/tenders/${tender.slug}`}
           className="
           mt-0
           lg:mt-4

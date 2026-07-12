@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import Link from "next/link";
 import TenderFilters from "@/components/categories/listing/TenderFilters";
 import TenderSearch from "@/components/categories/listing/TenderSearch";
 import TenderResults from "@/components/categories/listing/TenderResults";
@@ -11,12 +12,12 @@ import { SlidersHorizontal, X } from "lucide-react";
 
 interface CategoryPageProps {
   params: Promise<{
-    category: string;
+    category: string[]; // Next.js catch-all route passes params as an array
   }>;
 }
 
 export default function CategoryPage({ params }: CategoryPageProps) {
-  const { category: categorySlug } = use(params);
+  const { category: categorySlugs } = use(params);
 
   // States for search and filtering
   const [search, setSearch] = useState("");
@@ -30,9 +31,38 @@ export default function CategoryPage({ params }: CategoryPageProps) {
     setPage(1);
   }, [search, stateId, selectedBudgets]);
 
-  // Fetch categories to find matching ID
+  // Fetch categories to find matched category and build breadcrumbs
   const { data: categories, isLoading: isCatLoading } = useCategories();
-  const matchedCategory = categories?.find((c: any) => c.slug === categorySlug);
+
+  // Find the active leaf-node category from the last slug segment
+  const activeSlug = Array.isArray(categorySlugs)
+    ? categorySlugs[categorySlugs.length - 1]
+    : categorySlugs;
+
+  const matchedCategory = categories?.find((c: any) => c.slug === activeSlug);
+
+  // Reconstruct nested category breadcrumbs
+  const breadcrumbs: { name: string; href: string }[] = [];
+  if (matchedCategory && matchedCategory.path && Array.isArray(categories)) {
+    const pathCodes = matchedCategory.path.split("/").filter(Boolean);
+    pathCodes.forEach((code: any, index: number) => {
+      const cat = categories.find((c: any) => c.code === code);
+      if (cat) {
+        const slugsUpToNow = pathCodes
+          .slice(0, index + 1)
+          .map((cCode: any) => {
+            const match = categories.find((c: any) => c.code === cCode);
+            return match ? match.slug : "";
+          })
+          .filter(Boolean);
+
+        breadcrumbs.push({
+          name: cat.name,
+          href: `/categories/${slugsUpToNow.join("/")}`,
+        });
+      }
+    });
+  }
 
   // Compute min/max price in cents based on selected budgets
   let minPriceCents: number | undefined;
@@ -56,13 +86,12 @@ export default function CategoryPage({ params }: CategoryPageProps) {
     if (mins.length > 0) {
       minPriceCents = Math.min(...mins);
     }
-    // If any checked range is 1M+, maxPriceCents is undefined (no ceiling)
     if (maxs.length === selectedBudgets.length) {
       maxPriceCents = Math.max(...maxs);
     }
   }
 
-  // Fetch tenders under the matched category with current filters
+  // Fetch tenders under the matched category (which supports hierarchical sub-category search)
   const {
     data: response,
     isLoading: isTendersLoading,
@@ -81,9 +110,9 @@ export default function CategoryPage({ params }: CategoryPageProps) {
       : undefined,
   );
 
-  const title =
-    categorySlug.charAt(0).toUpperCase() +
-    categorySlug.slice(1).replace("-", " ");
+  const title = matchedCategory
+    ? matchedCategory.name
+    : activeSlug.charAt(0).toUpperCase() + activeSlug.slice(1).replace("-", " ");
 
   if (isCatLoading) {
     return (
@@ -108,11 +137,39 @@ export default function CategoryPage({ params }: CategoryPageProps) {
   }
 
   const tenders = response?.data || [];
-  const meta = response?.meta as any; // paginated meta properties
+  const meta = response?.meta as any;
 
   return (
     <main className="py-12 lg:py-20">
       <div className="max-w-7xl mx-auto px-6">
+        {/* Navigation Breadcrumbs */}
+        <div className="mb-6 text-sm text-[var(--muted)] flex flex-wrap items-center">
+          <Link href="/" className="hover:underline">
+            Home
+          </Link>
+          <span className="mx-2">/</span>
+          <Link href="/categories" className="hover:underline">
+            Categories
+          </Link>
+          {breadcrumbs.map((bc, idx) => {
+            const isLast = idx === breadcrumbs.length - 1;
+            return (
+              <span key={idx} className="flex items-center">
+                <span className="mx-2">/</span>
+                {isLast ? (
+                  <span className="text-[var(--text-primary)] font-medium">
+                    {bc.name}
+                  </span>
+                ) : (
+                  <Link href={bc.href} className="hover:underline">
+                    {bc.name}
+                  </Link>
+                )}
+              </span>
+            );
+          })}
+        </div>
+
         <h1 className="text-5xl font-bold text-[var(--foreground)]">
           {title} Opportunities
         </h1>
@@ -145,7 +202,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
               tenders={tenders}
               isLoading={isTendersLoading}
               error={error}
-              categorySlug={categorySlug}
+              categorySlug={activeSlug}
             />
 
             {meta && meta.totalPages > 1 && (

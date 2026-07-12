@@ -222,10 +222,9 @@ export default function PricingPage() {
                 }}
                 className={`
                   flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 shadow-sm
-                  ${
-                    activeTab === tab.id
-                      ? "bg-[#003EC7] text-white shadow-md transform -translate-y-0.5"
-                      : "bg-[var(--surface)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--surface-secondary)]"
+                  ${activeTab === tab.id
+                    ? "bg-[#003EC7] text-white shadow-md transform -translate-y-0.5"
+                    : "bg-[var(--surface)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--surface-secondary)]"
                   }
                 `}
               >
@@ -298,7 +297,7 @@ export default function PricingPage() {
                     onChange={(e) => setSelectedCategoryId(e.target.value)}
                     className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-4 py-3.5 text-sm text-[var(--foreground)] focus:ring-2 focus:ring-[#003EC7]"
                   >
-                    {categories?.map((c) => (
+                    {categories?.map((c: any) => (
                       <option key={c.id} value={c.id}>
                         {c.name} ({c.activeTenderCount || 0} active tenders)
                       </option>
@@ -319,15 +318,14 @@ export default function PricingPage() {
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto border border-[var(--border)] p-4 rounded-2xl bg-[var(--background)]">
-                    {categories?.map((cat) => (
+                    {categories?.map((cat: any) => (
                       <label
                         key={cat.id}
                         className={`
                           flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 text-sm
-                          ${
-                            selectedCategoryIds.includes(cat.id)
-                              ? "border-[#003EC7] bg-[#003EC7]/5 text-[#003EC7] font-bold"
-                              : "border-[var(--border)] hover:bg-[var(--surface-secondary)] text-[var(--foreground)]"
+                          ${selectedCategoryIds.includes(cat.id)
+                            ? "border-[#003EC7] bg-[#003EC7]/5 text-[#003EC7] font-bold"
+                            : "border-[var(--border)] hover:bg-[var(--surface-secondary)] text-[var(--foreground)]"
                           }
                         `}
                       >
@@ -383,8 +381,8 @@ export default function PricingPage() {
                 const finalPriceCents =
                   plan.discountPercentage > 0
                     ? Math.round(
-                        plan.priceCents * (1 - plan.discountPercentage / 100),
-                      )
+                      plan.priceCents * (1 - plan.discountPercentage / 100),
+                    )
                     : plan.priceCents;
 
                 const billingFrequency =
@@ -434,13 +432,12 @@ export default function PricingPage() {
                     key={plan.id}
                     className={`
                       relative rounded-3xl p-8 flex flex-col border transition-all duration-300 bg-[var(--surface)] hover:shadow-lg
-                      ${
-                        isActive
-                          ? "border-2 border-green-500 shadow-md"
-                          : plan.planType === "all-access" &&
-                              plan.durationDays === 365
-                            ? "border-2 border-[#003EC7] shadow-md"
-                            : "border-[var(--border)]"
+                      ${isActive
+                        ? "border-2 border-green-500 shadow-md"
+                        : plan.planType === "all-access" &&
+                          plan.durationDays === 365
+                          ? "border-2 border-[#003EC7] shadow-md"
+                          : "border-[var(--border)]"
                       }
                     `}
                   >
@@ -524,11 +521,10 @@ export default function PricingPage() {
                         disabled={checkoutMutation.isPending}
                         className={`
                           mt-8 py-3.5 rounded-xl font-bold text-sm transition-all duration-200 shadow-sm
-                          ${
-                            plan.planType === "all-access" &&
+                          ${plan.planType === "all-access" &&
                             plan.durationDays === 365
-                              ? "bg-[#003EC7] hover:bg-[#002fad] text-white hover:shadow-md"
-                              : "border border-[var(--border)] text-[var(--foreground)] hover:border-[#003EC7] hover:text-[#003EC7] hover:bg-[var(--surface-secondary)]"
+                            ? "bg-[#003EC7] hover:bg-[#002fad] text-white hover:shadow-md"
+                            : "border border-[var(--border)] text-[var(--foreground)] hover:border-[#003EC7] hover:text-[#003EC7] hover:bg-[var(--surface-secondary)]"
                           }
                         `}
                       >

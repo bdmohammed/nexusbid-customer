@@ -20,6 +20,9 @@ export function useCategories(query?: {
         throw new AppError(data.message, 400, data.error as ErrorCode);
       }
 
+      if (data.data && typeof data.data === "object" && "categories" in data.data) {
+        return (data.data as any).categories;
+      }
       return data.data;
     },
   });
