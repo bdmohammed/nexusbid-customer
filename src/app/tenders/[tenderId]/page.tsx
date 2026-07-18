@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useTender } from "@/features/tenders/api/queries";
 import { useDownloadTender } from "@/features/tenders/api/mutations";
 import { useCategories } from "@/features/categories/api/queries";
+import { getErrorMessage } from "@/lib/errors";
 
 interface TenderDetailPageProps {
   params: Promise<{
@@ -87,7 +88,7 @@ export default function TenderDetailPage({ params }: TenderDetailPageProps) {
       const downloadUrl = await downloadMutation.mutateAsync(tender.id);
       window.open(downloadUrl, "_blank");
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to retrieve download link.");
+      alert(getErrorMessage(err) || "Failed to retrieve download link.");
     }
   };
 

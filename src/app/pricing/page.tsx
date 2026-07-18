@@ -16,6 +16,7 @@ import {
   Check,
   AlertCircle,
 } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
 import {
   useMySubscription,
   usePlans,
@@ -134,7 +135,7 @@ export default function PricingPage() {
       }
     } catch (err: any) {
       setErrorMessage(
-        err.response?.data?.message || "Failed to start checkout process.",
+        getErrorMessage(err) || "Failed to start checkout process.",
       );
     }
   };
@@ -151,7 +152,7 @@ export default function PricingPage() {
       await cancelMutation.mutateAsync();
       alert("Subscription cancelled successfully.");
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to cancel subscription.");
+      alert(getErrorMessage(err) || "Failed to cancel subscription.");
     }
   };
 

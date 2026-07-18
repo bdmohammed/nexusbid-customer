@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { AlertCircle } from "lucide-react";
+import { getErrorMessage, getValidationErrors } from "@/lib/errors";
 
 const loginSchema = z.object({
   email: z
@@ -63,13 +64,13 @@ function LoginContent() {
       router.push(redirect);
       router.refresh();
     } catch (err: any) {
-      if (err.response?.data?.errors) {
-        const backendErrors = err.response.data.errors;
+      const backendErrors = getValidationErrors(err);
+      if (backendErrors) {
         backendErrors.forEach((e: { field: string; message: string }) => {
           setError(e.field as any, { type: "manual", message: e.message });
         });
       } else {
-        const msg = err.response?.data?.message || "Invalid email or password.";
+        const msg = getErrorMessage(err) || "Invalid email or password.";
         setError("root", { type: "manual", message: msg });
       }
     }
