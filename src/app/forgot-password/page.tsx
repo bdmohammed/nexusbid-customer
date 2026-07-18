@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { getErrorMessage } from "@/lib/errors";
 
 export default function ForgotPasswordPage() {
   const { forgotPassword, isForgotSending } = useAuth();
@@ -28,7 +29,7 @@ export default function ForgotPasswordPage() {
       setEmail("");
     } catch (err: any) {
       const msg =
-        err.response?.data?.message || "Failed to initiate password reset.";
+        getErrorMessage(err) || "Failed to initiate password reset.";
       setErrorMsg(msg);
     }
   };

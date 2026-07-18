@@ -2,6 +2,7 @@
 
 import { useSubmitContact } from "@/features/contact/api/mutations";
 import React, { useState } from "react";
+import { getErrorMessage } from "@/lib/errors";
 
 export default function ContactForm() {
   const submitContactMutation = useSubmitContact();
@@ -37,7 +38,7 @@ export default function ContactForm() {
       setMessage("");
     } catch (err: any) {
       setErrorMsg(
-        err.response?.data?.message ||
+        getErrorMessage(err) ||
           "Failed to submit contact message. Please try again.",
       );
     }
