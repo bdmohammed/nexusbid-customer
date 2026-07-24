@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, Suspense } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -51,7 +51,7 @@ function VerifyEmailContent() {
           setStatus("error");
           setErrorMsg(
             getErrorMessage(err) ||
-               "Verification failed. The token may be invalid or expired.",
+              "Verification failed. The token may be invalid or expired.",
           );
         });
     } else {
@@ -180,11 +180,13 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-[80vh] flex items-center justify-center bg-linear-to-b from-[var(--background)] to-[var(--surface-secondary)]">
-        <div className="text-[var(--muted)]">Loading...</div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-[80vh] flex items-center justify-center bg-linear-to-b from-[var(--background)] to-[var(--surface-secondary)]">
+          <div className="text-[var(--muted)]">Loading...</div>
+        </div>
+      }
+    >
       <VerifyEmailContent />
     </Suspense>
   );

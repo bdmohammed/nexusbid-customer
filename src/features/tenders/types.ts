@@ -19,3 +19,18 @@ export interface TenderDetailsResponse {
 export interface TenderDownloadResponse {
   downloadUrl: string;
 }
+
+export interface TenderQuestionInput {
+  questionText: string;
+}
+
+export interface TenderWatchInput {
+  notifyEmail?: boolean;
+  notifyInApp?: boolean;
+}
+
+export interface TenderStatistics {
+  totalPublished: number;
+  closingSoon: number;
+  activeCategoriesCount: number;
+}

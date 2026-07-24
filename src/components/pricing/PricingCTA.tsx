@@ -31,7 +31,7 @@ export default function PricingCTA() {
               leading-8
             "
           >
-            Join hundreds of organizations using NexusBid to discover
+            Join hundreds of organizations using RFPNexa to discover
             opportunities and streamline procurement.
           </p>
 

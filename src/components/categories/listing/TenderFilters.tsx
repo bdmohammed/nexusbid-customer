@@ -1,6 +1,6 @@
 "use client";
 
-import { useStates } from "@/features/state/api/queries";
+import { useStates } from "@/features/country/api/queries";
 import React from "react";
 import type { State } from "@/types";
 
@@ -67,7 +67,7 @@ export default function TenderFilters({
         "
         >
           <option value="">All States / Locations</option>
-          {states?.map((st: State) => (
+          {states?.map((st) => (
             <option key={st.id} value={st.id}>
               {st.name} ({st.code})
             </option>

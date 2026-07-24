@@ -1,5 +1,5 @@
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { useCountries } from "@/features/state/api/queries";
+import { useCountries } from "@/features/country/api/queries";
 import QueryBoundary from "@/components/query/QueryBoundary";
 import { useCountryDropdown } from "./useCountryDropdown";
 import DropdownButton from "./DropdownButton";
@@ -21,7 +21,6 @@ export default function CountryDropdown({
 }: CountryDropdownProps) {
   const countriesQuery = useCountries();
   const countries = countriesQuery.data;
-
   const {
     isOpen,
     setIsOpen,
@@ -84,10 +83,10 @@ export default function CountryDropdown({
                 {filteredCountries.length > 0 ? (
                   filteredCountries.map((c) => (
                     <CountryOption
-                      key={c}
-                      country={c}
+                      key={c.countryCode}
+                      country={c.countryName}
                       selectedValue={value}
-                      onClick={() => handleSelect(c)}
+                      onClick={() => handleSelect(c.countryId)}
                     />
                   ))
                 ) : (

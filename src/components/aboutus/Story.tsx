@@ -27,7 +27,7 @@ export default function Story() {
               text-[var(--foreground)]
             "
           >
-            The Evolution of NexusBid
+            The Evolution of RFPNexa
           </h2>
 
           <p
@@ -250,7 +250,7 @@ export default function Story() {
                   max-w-xl
                 "
               >
-                NexusBid now facilitates thousands of tenders every month,
+                RFPNexa now facilitates thousands of tenders every month,
                 connecting public institutions, enterprises and service
                 providers in over 120 markets.
               </p>

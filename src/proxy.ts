@@ -1,5 +1,3 @@
-// src/proxy.ts
-
 import { NextRequest, NextResponse } from "next/server";
 
 const AUTH_ROUTES = [
@@ -13,7 +11,7 @@ const PROTECTED_ROUTES = [
   "/dashboard",
   "/profile",
   "/settings",
-  "/admin",
+  "/account",
 ] as const;
 
 function matches(pathname: string, routes: readonly string[]) {
@@ -26,25 +24,24 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const hasAccessToken =
+    request.cookies.has("nexusbid_token") ||
     request.cookies.has("access_token") ||
     request.cookies.has("__Host-access_token");
 
   /**
-   * Guest trying to access protected pages.
+   * Guest attempting to access protected user dashboard/settings/profile.
    */
   if (!hasAccessToken && matches(pathname, PROTECTED_ROUTES)) {
     const loginUrl = new URL("/login", request.url);
-
     loginUrl.searchParams.set("redirect", pathname);
-
     return NextResponse.redirect(loginUrl);
   }
 
   /**
-   * Logged-in user trying to access auth pages.
+   * Logged-in customer attempting to access auth pages (login/register).
    */
   if (hasAccessToken && matches(pathname, AUTH_ROUTES)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/tenders", request.url));
   }
 
   return NextResponse.next();
@@ -52,10 +49,10 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/admin/:path*",
     "/dashboard/:path*",
     "/profile/:path*",
     "/settings/:path*",
+    "/account/:path*",
     "/login",
     "/register",
     "/forgot-password",

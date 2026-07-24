@@ -3,14 +3,15 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
-import CountryDropdown from "@/components/auth/CountryDropdown";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { getErrorMessage, getValidationErrors } from "@/lib/errors";
+import { useCountries } from "@/features/country/api/queries";
+import CountryDropdown from "@/components/auth/CountryDropdown";
 
 const registerSchema = z
   .object({
@@ -21,14 +22,12 @@ const registerSchema = z
       .max(120, { error: "Name must not exceed 120 characters" }),
 
     email: z
-      .string()
-      .trim()
-      .min(1, { error: "Email is required" })
       .email({ error: "Please enter a valid email address" })
       .transform((value) => value.toLowerCase()),
 
     password: z
       .string()
+      .trim()
       .min(8, { error: "Password must be at least 8 characters" })
       .regex(/[A-Z]/, {
         error: "Password must contain at least one uppercase letter",
@@ -43,21 +42,19 @@ const registerSchema = z
         error: "Password must contain at least one special character",
       }),
 
-    confirmPassword: z
-      .string()
-      .min(1, { error: "Please confirm your password" }),
+    confirmPassword: z.string(),
 
     companyName: z
       .string()
       .trim()
-      .max(160, { error: "Company name must not exceed 160 characters" })
-      .or(z.literal("")),
+      .min(2, { error: "Company name must be at least 2 characters" })
+      .max(160, { error: "Company name must not exceed 160 characters" }),
 
     country: z
       .string()
       .trim()
-      .max(100, { error: "Country name must not exceed 100 characters" })
-      .or(z.literal("")),
+      .min(1, { error: "Country is required" })
+      .max(100, { error: "Country name must not exceed 100 characters" }),
 
     secondary_website: z.string().optional(), // Honeypot field
 
@@ -74,17 +71,23 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
+
   const {
     register: registerUser,
     isRegistering,
     user,
     isAuthenticated,
   } = useAuth();
+  const { data: countries } = useCountries();
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
     if (user || isAuthenticated) {
-      router.push("/");
+      router.replace("/");
     }
   }, [user, isAuthenticated, router]);
 
@@ -92,9 +95,8 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     control,
-    watch,
     setError,
-    formState: { errors },
+    formState: { errors, isSubmitted, dirtyFields, touchedFields },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     mode: "onTouched",
@@ -110,7 +112,7 @@ export default function RegisterPage() {
     },
   });
 
-  const password = watch("password");
+  const password = useWatch({ control, name: "password", defaultValue: "" });
 
   const onSubmit = async (data: RegisterFormValues) => {
     // Honeypot check
@@ -123,12 +125,20 @@ export default function RegisterPage() {
       // Strip confirmPassword, secondary_website, and terms before sending
       const { confirmPassword, secondary_website, terms, ...payload } = data;
 
+      const selectedCountry = countries?.find(
+        (c) => c.countryName.toLowerCase() === payload.country.toLowerCase(),
+      );
+      const countryId = selectedCountry
+        ? String(selectedCountry.countryId)
+        : "";
+
       await registerUser({
         name: payload.name,
         email: payload.email,
         password: payload.password,
         companyName: payload.companyName,
         country: payload.country,
+        countryId,
       });
 
       setSuccessMsg(
@@ -138,7 +148,8 @@ export default function RegisterPage() {
       const backendErrors = getValidationErrors(err);
       if (backendErrors) {
         backendErrors.forEach((e: { field: string; message: string }) => {
-          setError(e.field as any, { type: "manual", message: e.message });
+          const fieldName = e.field === "countryId" ? "country" : e.field;
+          setError(fieldName as any, { type: "manual", message: e.message });
         });
       } else {
         const msg = getErrorMessage(err) || "Failed to register account.";
@@ -280,16 +291,29 @@ export default function RegisterPage() {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--muted)] mb-2">
                   Password <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="password"
-                  className={`w-full px-4 py-3 rounded-lg bg-[var(--surface-secondary)] border text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-hidden focus:ring-2 focus:ring-[#003EC7] focus:border-transparent transition-all ${
-                    errors.password
-                      ? "border-red-500"
-                      : "border-[var(--border)]"
-                  }`}
-                  placeholder="••••••••"
-                  {...register("password")}
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className={`w-full pl-4 pr-11 py-3 rounded-lg bg-[var(--surface-secondary)] border text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-hidden focus:ring-2 focus:ring-[#003EC7] focus:border-transparent transition-all ${
+                      errors.password
+                        ? "border-red-500"
+                        : "border-[var(--border)]"
+                    }`}
+                    placeholder="Enter Password"
+                    {...register("password")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] transition-colors focus:outline-hidden cursor-pointer"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
                 {errors.password && (
                   <span className="text-xs text-red-500 mt-1 block">
                     {errors.password.message}
@@ -301,16 +325,29 @@ export default function RegisterPage() {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--muted)] mb-2">
                   Confirm Password <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="password"
-                  className={`w-full px-4 py-3 rounded-lg bg-[var(--surface-secondary)] border text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-hidden focus:ring-2 focus:ring-[#003EC7] focus:border-transparent transition-all ${
-                    errors.confirmPassword
-                      ? "border-red-500"
-                      : "border-[var(--border)]"
-                  }`}
-                  placeholder="••••••••"
-                  {...register("confirmPassword")}
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    className={`w-full pl-4 pr-11 py-3 rounded-lg bg-[var(--surface-secondary)] border text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-hidden focus:ring-2 focus:ring-[#003EC7] focus:border-transparent transition-all ${
+                      errors.confirmPassword
+                        ? "border-red-500"
+                        : "border-[var(--border)]"
+                    }`}
+                    placeholder="Enter Confirm Password"
+                    {...register("confirmPassword")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] transition-colors focus:outline-hidden cursor-pointer"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
                 {errors.confirmPassword && (
                   <span className="text-xs text-red-500 mt-1 block">
                     {errors.confirmPassword.message}
@@ -319,7 +356,12 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <PasswordChecklist password={password} />
+            <PasswordChecklist
+              password={password}
+              isTouched={touchedFields.password}
+              isDirty={dirtyFields.password}
+              isSubmitted={isSubmitted}
+            />
 
             <div className="flex flex-col mt-2">
               <div className="flex items-start">
@@ -353,6 +395,7 @@ export default function RegisterPage() {
 
             <button
               type="submit"
+              disabled={isRegistering}
               className="w-full py-3.5 px-4 bg-[#003EC7] hover:bg-[#002fad] text-white font-semibold rounded-lg shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
             >
               {isRegistering ? (

@@ -15,4 +15,8 @@ export const navigation = [
     label: "Contact Us",
     href: "/contactus",
   },
+  {
+    label: "FAQs",
+    href: "/faqs",
+  },
 ];

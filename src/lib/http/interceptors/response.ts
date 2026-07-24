@@ -3,7 +3,7 @@
 import { AxiosInstance } from "axios";
 
 import { clearCsrfToken, fetchCsrfToken } from "../csrf";
-import { HTTP_STATUS } from "../constants";
+import { HTTP_STATUS, AUTH_ENDPOINTS } from "../constants";
 import { refreshSession } from "../refresh";
 import { ApiAxiosError, RetryRequestConfig } from "../types";
 import { normalizeError } from "@/lib/errors";
@@ -40,11 +40,23 @@ export function setupResponseInterceptor(api: AxiosInstance): void {
       /**
        * ------------------------------------------------------------
        * 401 - Access Token Expired
+       * Exclude /auth/me, /auth/refresh, /auth/login, /auth/register, /auth/logout
+       * from triggering refreshSession on 401.
        * ------------------------------------------------------------
        */
+      const requestUrl = originalRequest.url || "";
+      const isAuthBypassUrl =
+        requestUrl.includes(AUTH_ENDPOINTS.ME) ||
+        requestUrl.includes(AUTH_ENDPOINTS.REFRESH) ||
+        requestUrl.includes(AUTH_ENDPOINTS.LOGIN) ||
+        requestUrl.includes(AUTH_ENDPOINTS.REGISTER) ||
+        requestUrl.includes(AUTH_ENDPOINTS.LOGOUT) ||
+        requestUrl.includes(AUTH_ENDPOINTS.CSRF_TOKEN);
+
       if (
         error.response?.status === HTTP_STATUS.UNAUTHORIZED &&
-        !originalRequest._retry
+        !originalRequest._retry &&
+        !isAuthBypassUrl
       ) {
         originalRequest._retry = true;
         try {

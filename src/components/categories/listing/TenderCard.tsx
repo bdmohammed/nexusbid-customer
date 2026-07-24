@@ -2,46 +2,61 @@ import Link from "next/link";
 import { Tender } from "@/types";
 
 interface TenderCardProps {
-  tender: Tender;
-  categorySlug: string;
+  tender: Tender & Record<string, any>;
+  categorySlug?: string;
 }
 
 export default function TenderCard({ tender, categorySlug }: TenderCardProps) {
   // Compute days left
-  const deadlineDate = new Date(tender.deadline);
-  const diffTime = deadlineDate.getTime() - Date.now();
+  const deadline = tender.deadline || tender.closingDate;
+  const deadlineDate = deadline ? new Date(deadline) : null;
+  const diffTime = deadlineDate ? deadlineDate.getTime() - Date.now() : 0;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   const daysLeft = diffDays > 0 ? diffDays : 0;
 
   // Format budget price
-  const formattedBudget = (tender.priceCents / 100).toLocaleString("en-US", {
+  const rawBudget =
+    tender.priceCents !== undefined
+      ? tender.priceCents / 100
+      : tender.budgetMax || 0;
+  const formattedBudget = rawBudget.toLocaleString("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: tender.currency || "USD",
     maximumFractionDigits: 0,
   });
 
   // Location display
+  const stateName =
+    tender.state?.name || tender.state?.code || tender.state || "USA";
   const location = tender.city
-    ? `${tender.city}, ${tender.state?.code || "USA"}`
-    : `${tender.state?.name || "United States"}`;
+    ? `${tender.city}, ${stateName}`
+    : `${stateName}`;
 
   // Formatted posted date
-  const postedDate = new Date(tender.postedDate).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const posted = tender.postedDate || tender.openingDate || tender.createdAt;
+  const postedDate = posted
+    ? new Date(posted).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "N/A";
 
   const getStatusStyles = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "published":
+      case "active":
         return "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400";
       case "expired":
+      case "closed":
         return "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400";
       default:
         return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
     }
   };
+
+  const tenderStatus = tender.status || tender.publicationStatus || "published";
+  const tenderTargetSlug = tender.slug || tender.id;
 
   return (
     <div
@@ -70,10 +85,10 @@ export default function TenderCard({ tender, categorySlug }: TenderCardProps) {
           px-3
           py-1
           rounded-full
-          ${getStatusStyles(tender.status)}
+          ${getStatusStyles(tenderStatus)}
         `}
         >
-          {tender.status}
+          {tenderStatus}
         </span>
 
         <h3
@@ -84,7 +99,7 @@ export default function TenderCard({ tender, categorySlug }: TenderCardProps) {
           text-[var(--foreground)]
         "
         >
-          {tender.title}
+          {tender.title || tender.activeVersion?.title || "Procurement Tender"}
         </h3>
 
         <p
@@ -96,7 +111,9 @@ export default function TenderCard({ tender, categorySlug }: TenderCardProps) {
           line-clamp-2
         "
         >
-          {tender.description || "No description provided."}
+          {tender.description ||
+            tender.activeVersion?.description ||
+            "No description provided."}
         </p>
 
         <div
@@ -160,7 +177,7 @@ export default function TenderCard({ tender, categorySlug }: TenderCardProps) {
         </div>
 
         <Link
-          href={`/tenders/${tender.slug}`}
+          href={`/tenders/${tenderTargetSlug}`}
           className="
           mt-0
           lg:mt-4

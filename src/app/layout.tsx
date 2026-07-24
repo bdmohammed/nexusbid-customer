@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "NexusBid",
+  title: "RFPNexa",
   description: "Enterprise Procurement Marketplace",
 };
 

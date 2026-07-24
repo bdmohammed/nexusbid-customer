@@ -27,7 +27,7 @@ export default function Footer() {
                 text-(--primary)
               "
             >
-              NexusBid
+              RFPNexa
             </h3>
 
             <p
@@ -41,35 +41,6 @@ export default function Footer() {
               Redefining procurement for the digital age through precision,
               transparency and global scale.
             </p>
-          </div>
-
-          {/* Platform */}
-
-          <div>
-            <h4
-              className="
-                font-semibold
-                mb-5
-                text-(--foreground)
-              "
-            >
-              Platform
-            </h4>
-
-            <ul className="space-y-3">
-              <li>
-                <a href="#">Marketplace</a>
-              </li>
-              <li>
-                <a href="#">Direct Award</a>
-              </li>
-              <li>
-                <a href="#">Analytics</a>
-              </li>
-              <li>
-                <a href="#">Security</a>
-              </li>
-            </ul>
           </div>
 
           {/* Company */}
@@ -90,13 +61,13 @@ export default function Footer() {
                 <a href="/aboutus">About Us</a>
               </li>
               <li>
-                <a href="#">Careers</a>
+                <a href="/contactus">Contact Us</a>
               </li>
               <li>
-                <a href="#">Press</a>
+                <a href="/pricing">Pricing Plans</a>
               </li>
               <li>
-                <a href="#">Contact</a>
+                <a href="/faqs">FAQs & Help</a>
               </li>
             </ul>
           </div>
@@ -116,16 +87,10 @@ export default function Footer() {
 
             <ul className="space-y-3">
               <li>
-                <a href="#">Privacy Policy</a>
+                <a href="/contactus">Support Contact</a>
               </li>
               <li>
-                <a href="#">Terms of Service</a>
-              </li>
-              <li>
-                <a href="#">Cookie Settings</a>
-              </li>
-              <li>
-                <a href="#">Support</a>
+                <a href="/faqs">Frequently Asked Questions</a>
               </li>
             </ul>
           </div>
@@ -153,30 +118,8 @@ export default function Footer() {
               text-[var(--muted)]
             "
           >
-            © 2024 NexusBid Technologies Inc. All rights reserved.
+            © 2024 RFPNexa Technologies Inc. All rights reserved.
           </p>
-
-          <div className="flex items-center gap-5">
-            <button
-              className="
-                text-(--muted)
-                hover:text-(--primary)
-                transition
-              "
-            >
-              🌐
-            </button>
-
-            <button
-              className="
-                text-(--muted)
-                hover:text-(--primary)
-                transition
-              "
-            >
-              🌎
-            </button>
-          </div>
         </div>
       </div>
     </footer>

@@ -15,6 +15,6 @@ export const story = [
     year: "Today",
     title: "The Global Standard",
     description:
-      "NexusBid now connects buyers and suppliers across 120+ markets worldwide.",
+      "RFPNexa now connects buyers and suppliers across 120+ markets worldwide.",
   },
 ];

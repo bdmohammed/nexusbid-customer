@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { getErrorMessage, getValidationErrors } from "@/lib/errors";
 import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { AlertCircle } from "lucide-react";
-import { getErrorMessage, getValidationErrors } from "@/lib/errors";
+import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 
 const loginSchema = z.object({
   email: z
@@ -22,23 +23,21 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 function LoginContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
-  // const isExpired = searchParams.get('expired') === 'true';
+  const [showPassword, setShowPassword] = useState(false);
 
   const { login, isLoggingIn, user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (user || isAuthenticated) {
-      router.push(redirect);
+      router.push("/");
     }
-  }, [user, isAuthenticated, router, redirect]);
+  }, [user, isAuthenticated, router]);
 
   const {
     register,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isValid },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     mode: "onTouched",
@@ -61,7 +60,8 @@ function LoginContent() {
         email: data.email,
         password: data.password,
       });
-      router.push(redirect);
+      toast.success("Logged in successfully!");
+      router.replace("/");
       router.refresh();
     } catch (err: any) {
       const backendErrors = getValidationErrors(err);
@@ -71,7 +71,7 @@ function LoginContent() {
         });
       } else {
         const msg = getErrorMessage(err) || "Invalid email or password.";
-        setError("root", { type: "manual", message: msg });
+        toast.error(msg);
       }
     }
   };
@@ -97,13 +97,6 @@ function LoginContent() {
             Your session has expired. Please log in again.
           </div>
         )} */}
-
-        {errors.root && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/30 text-red-500 rounded-lg text-xs font-medium flex items-center gap-2 justify-center">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errors.root.message}</span>
-          </div>
-        )}
 
         <form
           onSubmit={handleSubmit(onSubmit)}
@@ -145,17 +138,30 @@ function LoginContent() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--muted)] mb-2">
               Password
             </label>
-            <input
-              type="password"
-              className={`w-full px-4 py-3 rounded-lg bg-[var(--surface-secondary)] border text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-hidden focus:ring-2 focus:ring-[#003EC7] focus:border-transparent transition-all ${
-                errors.password ? "border-red-500" : "border-[var(--border)]"
-              }`}
-              placeholder="••••••••"
-              {...register("password")}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                className={`w-full pl-4 pr-11 py-3 rounded-lg bg-[var(--surface-secondary)] border text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-hidden focus:ring-2 focus:ring-[#003EC7] focus:border-transparent transition-all ${
+                  errors.password ? "border-red-500" : "border-[var(--border)]"
+                }`}
+                placeholder="Enter Password"
+                {...register("password")}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] transition-colors focus:outline-hidden"
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
             {errors.password && (
               <span className="text-xs text-red-500 mt-1 block">
                 {errors.password.message}
@@ -173,6 +179,7 @@ function LoginContent() {
 
           <button
             type="submit"
+            disabled={!isValid || isLoggingIn}
             className="w-full py-3.5 px-4 bg-[#003EC7] hover:bg-[#002fad] text-white font-semibold rounded-lg shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
           >
             {isLoggingIn ? (
@@ -220,11 +227,13 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-[80vh] flex items-center justify-center bg-linear-to-b from-[var(--background)] to-[var(--surface-secondary)]">
-        <div className="text-[var(--muted)]">Loading...</div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-[80vh] flex items-center justify-center bg-linear-to-b from-[var(--background)] to-[var(--surface-secondary)]">
+          <div className="text-[var(--muted)]">Loading...</div>
+        </div>
+      }
+    >
       <LoginContent />
     </Suspense>
   );

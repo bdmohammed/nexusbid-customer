@@ -1,12 +1,21 @@
 import { apiClient } from "@/lib/http";
-
-import type { ApiResponse, Category } from "@/types";
-import { CategoryQuery } from "../types";
+import type { ApiResponse } from "@/types";
+import type { CategoryListResponse, CategoryQuery, CategoryStats } from "../types";
 
 export const categoryApi = {
-  async getCategories(query?: CategoryQuery) {
-    return apiClient.get<ApiResponse<Category[]>>("/categories", {
+  /**
+   * List all active published categories (Public)
+   */
+  getCategories(query?: CategoryQuery) {
+    return apiClient.get<ApiResponse<CategoryListResponse>>("/categories", {
       params: query,
     });
+  },
+
+  /**
+   * Get category analytics & stats (Public)
+   */
+  getCategoryAnalytics() {
+    return apiClient.get<ApiResponse<CategoryStats>>("/categories/analytics");
   },
 };

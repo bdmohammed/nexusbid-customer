@@ -1,8 +1,9 @@
+import { Country } from "@/features/country";
 import { useState, useRef, useEffect, useMemo } from "react";
 
 export interface UseCountryDropdownProps {
   value: string;
-  countries: string[] | undefined;
+  countries?: Country[];
   onChange: (val: string) => void;
   onBlur: () => void;
 }
@@ -34,14 +35,14 @@ export function useCountryDropdown({
   // Set default selection to the first country if no value is provided
   useEffect(() => {
     if (!value && countries && countries.length > 0) {
-      onChange(countries[0]);
+      onChange(countries[0].countryName);
     }
   }, [value, countries, onChange]);
 
   const filteredCountries = useMemo(() => {
     if (!countries) return [];
     return countries.filter((c) =>
-      c.toLowerCase().includes(searchTerm.toLowerCase()),
+      c.countryName.toLowerCase().includes(searchTerm.toLowerCase()),
     );
   }, [countries, searchTerm]);
 

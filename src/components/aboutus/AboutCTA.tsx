@@ -29,7 +29,7 @@ export default function AboutCTA() {
           "
         >
           Whether you're a government entity, enterprise buyer, contractor or
-          supplier, NexusBid helps you unlock opportunities.
+          supplier, RFPNexa helps you unlock opportunities.
         </p>
 
         <div

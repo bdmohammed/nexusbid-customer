@@ -37,9 +37,12 @@ export default function DummyPaypalApprovePage() {
         <div className="relative z-10 space-y-6">
           {status === "processing" ? (
             <>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] text-xs font-bold uppercase tracking-wider mb-2">
+                <span>Demo Payment Sandbox</span>
+              </div>
               <div className="flex justify-center">
                 <svg
-                  className="animate-spin h-12 w-12 text-[#003EC7]"
+                  className="animate-spin h-12 w-12 text-[var(--primary)]"
                   fill="none"
                   viewBox="0 0 24 24"
                 >
@@ -59,11 +62,10 @@ export default function DummyPaypalApprovePage() {
                 </svg>
               </div>
               <h2 className="text-2xl font-extrabold text-[var(--foreground)]">
-                Processing Payment
+                Processing Demo Payment
               </h2>
               <p className="text-sm text-[var(--muted)]">
-                Please wait while we confirm your subscription approval with
-                PayPal.
+                Confirming instant mock subscription approval via Sandbox Payment Gateway...
               </p>
             </>
           ) : (
@@ -77,11 +79,10 @@ export default function DummyPaypalApprovePage() {
                 Subscription Activated!
               </h2>
               <p className="text-sm text-[var(--muted)]">
-                Thank you for subscribing. You now have full access to all
-                premium tenders, scope specifications, and PDF files.
+                Thank you for subscribing! Your account now has active access to all premium tenders, RFPs, and scope specifications.
               </p>
               <div className="pt-2 text-xs text-[var(--muted)]">
-                Redirecting you to the home page...
+                Redirecting to home page...
               </div>
             </>
           )}

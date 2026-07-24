@@ -3,6 +3,9 @@ import { Check } from "lucide-react";
 
 interface PasswordChecklistProps {
   password?: string;
+  isTouched?: boolean;
+  isDirty?: boolean;
+  isSubmitted?: boolean;
 }
 
 const requirements = [
@@ -34,7 +37,14 @@ const requirements = [
 ];
 
 export const PasswordChecklist = React.memo(
-  ({ password = "" }: PasswordChecklistProps) => {
+  ({
+    password = "",
+    isTouched = false,
+    isDirty = false,
+    isSubmitted = false,
+  }: PasswordChecklistProps) => {
+    if (!isDirty && !isTouched && !isSubmitted && !password) return null;
+
     return (
       <div className="mt-3 p-4 bg-[var(--surface-secondary)] border border-[var(--border)] rounded-lg space-y-2">
         <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">

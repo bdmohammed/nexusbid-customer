@@ -1,3 +1,4 @@
+//@ts-nocheck
 "use client";
 
 import React, { use } from "react";
@@ -7,11 +8,23 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useTender } from "@/features/tenders/api/queries";
 import { useDownloadTender } from "@/features/tenders/api/mutations";
 import { useCategories } from "@/features/categories/api/queries";
+import { useMySubscription } from "@/features/subscriptions/api/queries";
 import { getErrorMessage } from "@/lib/errors";
+import {
+  Calendar,
+  MapPin,
+  Building2,
+  Lock,
+  Download,
+  FileText,
+  CheckCircle2,
+  Clock,
+  ShieldAlert,
+} from "lucide-react";
 
 interface TenderDetailPageProps {
   params: Promise<{
-    tenderId: string; // This is the tender slug
+    tenderId: string; // This is the tender slug or ID
   }>;
 }
 
@@ -20,8 +33,9 @@ export default function TenderDetailPage({ params }: TenderDetailPageProps) {
   const { tenderId: slug } = use(params);
   const { user } = useAuth();
 
-  // Fetch live details
+  // Fetch live details & subscription status
   const { data, isLoading, error } = useTender(slug);
+  const { data: subData } = useMySubscription();
   const downloadMutation = useDownloadTender();
 
   // Fetch categories to reconstruct parent hierarchy breadcrumbs
@@ -46,7 +60,7 @@ export default function TenderDetailPage({ params }: TenderDetailPageProps) {
     );
   }
 
-  if (error || !data) {
+  if (error || !data || !data.tender) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-20 text-center">
         <h1 className="text-3xl font-bold text-red-500">Tender Not Found</h1>
@@ -54,10 +68,10 @@ export default function TenderDetailPage({ params }: TenderDetailPageProps) {
           This procurement opportunity does not exist or has been removed.
         </p>
         <Link
-          href="/categories"
+          href="/tenders"
           className="mt-6 inline-block text-[#003EC7] hover:underline font-semibold"
         >
-          ← Browse Categories
+          ← Browse All Tenders
         </Link>
       </div>
     );
@@ -65,22 +79,50 @@ export default function TenderDetailPage({ params }: TenderDetailPageProps) {
 
   const { tender, hasAccess } = data;
 
-  const deadlineDate = new Date(tender.deadline);
-  const diffTime = deadlineDate.getTime() - Date.now();
+  // Deadline calculation
+  const deadlineRaw = tender.deadline || tender.closingDate;
+  const deadlineDate = deadlineRaw ? new Date(deadlineRaw) : null;
+  const diffTime = deadlineDate ? deadlineDate.getTime() - Date.now() : 0;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   const daysLeft = diffDays > 0 ? diffDays : 0;
 
-  const formattedBudget = (tender.priceCents / 100).toLocaleString("en-US", {
+  // Budget formatting
+  const rawBudget =
+    tender.priceCents !== undefined
+      ? tender.priceCents / 100
+      : tender.budgetMax || 0;
+  const formattedBudget = rawBudget.toLocaleString("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: tender.currency || "USD",
     maximumFractionDigits: 0,
   });
 
-  const postedDate = new Date(tender.postedDate).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  // Dates formatting
+  const postedRaw = tender.postedDate || tender.openingDate || tender.createdAt;
+  const postedDate = postedRaw
+    ? new Date(postedRaw).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "N/A";
+
+  const closingDateFormatted = deadlineDate
+    ? deadlineDate.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "N/A";
+
+  // Location & Agency
+  const agencyName =
+    tender.agency || tender.department || "Government Procurement Entity";
+  const locationText =
+    tender.formattedAddress ||
+    (tender.city
+      ? `${tender.city}, ${tender.state?.code || tender.state?.name}`
+      : tender.state?.name || "United States");
 
   const handleDownload = async () => {
     if (!hasAccess) return;
@@ -92,37 +134,14 @@ export default function TenderDetailPage({ params }: TenderDetailPageProps) {
     }
   };
 
-  // Reconstruct nested category breadcrumbs from tender's category path
+  // Reconstruct nested category breadcrumbs
   const category = tender.category;
   const breadcrumbs: { name: string; href: string }[] = [];
 
-  //@ts-ignore
-  if (category && category.path && Array.isArray(categories)) {
-    //@ts-ignore
-    const pathCodes = category.path.split("/").filter(Boolean);
-    pathCodes.forEach((code: any, index: number) => {
-      const cat = categories.find((c: any) => c.code === code);
-      if (cat) {
-        // Accumulate slugs to build the nested URL
-        const slugsUpToNow = pathCodes
-          .slice(0, index + 1)
-          .map((cCode: any) => {
-            const match = categories.find((c: any) => c.code === cCode);
-            return match ? match.slug : "";
-          })
-          .filter(Boolean);
-
-        breadcrumbs.push({
-          name: cat.name,
-          href: `/categories/${slugsUpToNow.join("/")}`,
-        });
-      }
-    });
-  } else if (category) {
-    // Fallback if path is empty or categories not loaded yet
+  if (category) {
     breadcrumbs.push({
       name: category.name,
-      href: `/categories/${category.slug}`,
+      href: `/tenders?category=${category.id}`,
     });
   }
 
@@ -130,310 +149,384 @@ export default function TenderDetailPage({ params }: TenderDetailPageProps) {
     <main className="py-12 lg:py-20 bg-[var(--background)]">
       <div className="max-w-7xl mx-auto px-6">
         {/* Navigation Breadcrumbs */}
-        <div className="mb-6 text-sm text-[var(--muted)] flex flex-wrap items-center">
+        <div className="mb-6 text-sm text-[var(--muted)] flex flex-wrap items-center gap-1.5">
           <Link href="/" className="hover:underline">
             Home
           </Link>
-          <span className="mx-2">/</span>
-          <Link href="/categories" className="hover:underline">
-            Categories
+          <span>/</span>
+          <Link href="/tenders" className="hover:underline">
+            Tenders
           </Link>
 
           {breadcrumbs.map((bc, idx) => (
             <React.Fragment key={idx}>
-              <span className="mx-2">/</span>
+              <span>/</span>
               <Link href={bc.href} className="hover:underline">
                 {bc.name}
               </Link>
             </React.Fragment>
           ))}
 
-          <span className="mx-2">/</span>
-          <span className="text-[var(--text-primary)] truncate max-w-[200px] inline-block align-bottom font-medium">
+          <span>/</span>
+          <span className="text-[var(--foreground)] truncate max-w-[220px] inline-block font-semibold">
             {tender.title}
           </span>
         </div>
 
-        {/* Tender Header */}
+        {/* Tender Header Banner */}
         <section className="relative p-8 bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm">
-          {/* Glow background */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-[#003EC7]/5 blur-3xl rounded-full"></div>
 
           <div className="relative z-10">
-            <span className="bg-green-500/10 text-green-600 dark:text-green-400 px-3.5 py-1 rounded-full text-xs font-bold tracking-wider uppercase border border-green-500/20">
-              Verified Opportunity
-            </span>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <span className="bg-green-500/10 text-green-600 dark:text-green-400 px-3.5 py-1 rounded-full text-xs font-bold tracking-wider uppercase border border-green-500/20">
+                {tender.publicationStatus ||
+                  tender.status ||
+                  "Verified Opportunity"}
+              </span>
+
+              <span className="text-xs font-bold text-[var(--muted)] bg-[var(--surface-secondary)] px-3 py-1 rounded-lg border border-[var(--border)] font-mono">
+                Ref: {tender.referenceNumber || tender.referenceNo || "RFP-BID"}
+              </span>
+            </div>
 
             <h1 className="mt-5 text-3xl lg:text-5xl font-extrabold text-[var(--foreground)] tracking-tight leading-tight max-w-4xl">
               {tender.title}
             </h1>
 
-            <div className="mt-5 flex flex-wrap gap-4 text-sm text-[var(--muted)] font-medium">
-              <span>
-                Agency: <strong>{tender.agency}</strong>
+            <div className="mt-5 flex flex-wrap gap-4 text-sm text-[var(--muted)] font-medium items-center">
+              <span className="flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-[#003EC7]" />
+                Agency:{" "}
+                <strong className="text-[var(--foreground)]">
+                  {agencyName}
+                </strong>
               </span>
+
               {category && (
                 <>
                   <span>•</span>
                   <span>
-                    Category: <strong>{category.name}</strong>
+                    Category:{" "}
+                    <strong className="text-[var(--foreground)]">
+                      {category.name}
+                    </strong>
                   </span>
                 </>
               )}
-              <span>•</span>
-              <span>
-                State:{" "}
-                <strong>
-                  {tender.state?.name} ({tender.state?.code})
-                </strong>
-              </span>
+
+              {tender.state && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4 text-[#003EC7]" />
+                    Location:{" "}
+                    <strong className="text-[var(--foreground)]">
+                      {tender.state.name} ({tender.state.code})
+                    </strong>
+                  </span>
+                </>
+              )}
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-4">
+            <div className="mt-8 flex flex-wrap gap-4 items-center">
               {hasAccess ? (
                 <button
                   onClick={handleDownload}
                   disabled={downloadMutation.isPending}
-                  className="bg-[#003EC7] hover:bg-[#002fad] text-white px-7 py-3.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center gap-2"
+                  className="bg-[#003EC7] hover:bg-[#002fad] text-white px-7 py-3.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                 >
-                  {downloadMutation.isPending ? (
-                    <>
-                      <svg
-                        className="animate-spin h-5 w-5 text-white"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Preparing document...
-                    </>
-                  ) : (
-                    "📥 Download RFP Document"
-                  )}
+                  <Download className="w-4 h-4" />
+                  {downloadMutation.isPending
+                    ? "Preparing document..."
+                    : "Download Full Specification PDF"}
                 </button>
+              ) : subData?.subscription?.status === "ACTIVE" ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 w-full max-w-2xl">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 font-bold text-xs">
+                      <Lock className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span>Subscription Scope Limit</span>
+                    </div>
+                    <p className="text-xs text-[var(--muted)] leading-relaxed">
+                      Your active plan (
+                      <strong>
+                        {subData.subscription.planVersion?.name ||
+                          "Targeted Plan"}
+                      </strong>
+                      ) does not cover this tender's location or category.
+                    </p>
+                  </div>
+                  <Link
+                    href="/pricing"
+                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-all shrink-0 cursor-pointer"
+                  >
+                    View Plan Options
+                  </Link>
+                </div>
               ) : (
                 <Link
-                  href={
-                    user
-                      ? "/pricing"
-                      : `/login?redirect=/tenders/${slug}`
-                  }
-                  className="bg-[#003EC7] hover:bg-[#002fad] text-white px-7 py-3.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+                  href={user ? "/pricing" : `/login?redirect=/tenders/${slug}`}
+                  className="bg-[#003EC7] hover:bg-[#002fad] text-white px-7 py-3.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer"
                 >
-                  🔒 Unlock Details & Download RFP
+                  <Lock className="w-4 h-4 text-yellow-300" />
+                  <span>Unlock Details & Download RFP</span>
                 </Link>
               )}
             </div>
           </div>
         </section>
 
-        {/* Grid Body */}
-        <div className="mt-10 grid lg:grid-cols-12 gap-8">
-          {/* Main content */}
+        {/* Main Details Grid */}
+        <div className="mt-10 grid lg:grid-cols-12 gap-8 items-start">
+          {/* Main Content Column */}
           <div className="lg:col-span-8 space-y-8">
             {/* Overview */}
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 relative">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 relative shadow-xs">
               <h2 className="text-xl font-bold text-[var(--foreground)] border-b border-[var(--border)] pb-3 mb-4">
-                Tender Overview
+                Tender Overview & Description
               </h2>
-              {hasAccess ? (
-                <p className="text-[var(--foreground)] leading-relaxed whitespace-pre-line">
-                  {tender.description}
-                </p>
-              ) : (
-                <div className="space-y-3 blur-xs select-none">
-                  <p className="text-[var(--muted)]">
-                    This tender involves the provision of works and materials
-                    for the implementation of procurement systems as detailed by
-                    the local agency guidelines. All construction standards must
-                    comply with state regulations.
-                  </p>
-                  <p className="text-[var(--muted)]">
-                    The vendor will deliver end-to-end integration and quality
-                    assurance logs throughout the lifecycle of the contract.
-                  </p>
-                </div>
-              )}
-              {!hasAccess && (
-                <div className="absolute inset-0 bg-[var(--surface)]/70 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center p-6 text-center">
-                  <span className="text-3xl mb-2">🔒</span>
-                  <h4 className="font-bold text-sm text-[var(--foreground)]">
-                    Detailed description is locked
-                  </h4>
-                  <p className="text-xs text-[var(--muted)] max-w-xs mt-1">
-                    Please subscribe or log in to view the complete overview and
-                    specifications.
-                  </p>
-                </div>
-              )}
+              <p className="text-[var(--foreground)] leading-relaxed whitespace-pre-line text-sm sm:text-base">
+                {tender.description ||
+                  "No description provided for this tender."}
+              </p>
             </div>
 
-            {/* Scope of Work */}
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 relative">
-              <h2 className="text-xl font-bold text-[var(--foreground)] border-b border-[var(--border)] pb-3 mb-4">
-                Scope of Work
-              </h2>
-              {hasAccess ? (
-                <p className="text-[var(--foreground)] leading-relaxed whitespace-pre-line">
-                  {/* {tender.scopeOfWork || "No specific scope of work provided in details."} */}
-                </p>
-              ) : (
-                <div className="space-y-3 blur-xs select-none">
-                  <p className="text-[var(--muted)]">
-                    1. Mobilization of engineering teams and construction equipment.
-                  </p>
-                  <p className="text-[var(--muted)]">
-                    2. Preparation of detailed architectural diagrams and local environmental reviews.
-                  </p>
-                  <p className="text-[var(--muted)]">
-                    3. Execution of primary concrete structural components and plumbing lines.
-                  </p>
-                </div>
-              )}
-              {!hasAccess && (
-                <div className="absolute inset-0 bg-[var(--surface)]/70 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center p-6 text-center">
-                  <span className="text-3xl mb-2">🔒</span>
-                  <h4 className="font-bold text-sm text-[var(--foreground)]">
-                    Scope of Work is locked
-                  </h4>
-                  <p className="text-xs text-[var(--muted)] max-w-xs mt-1">
-                    Complete deliverables and requirements are restricted to active plan subscribers.
-                  </p>
-                </div>
-              )}
-            </div>
+            {/* Eligibility & Conditions */}
+            {(tender.eligibility || tender.specialConditions) && (
+              <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-xs space-y-6">
+                {tender.eligibility && (
+                  <div>
+                    <h3 className="text-lg font-bold text-[var(--foreground)] border-b border-[var(--border)] pb-2 mb-3 flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      <span>Eligibility Criteria</span>
+                    </h3>
+                    <p className="text-sm text-[var(--foreground)] leading-relaxed">
+                      {tender.eligibility}
+                    </p>
+                  </div>
+                )}
 
-            {/* Requirements */}
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 relative">
-              <h2 className="text-xl font-bold text-[var(--foreground)] border-b border-[var(--border)] pb-3 mb-4">
-                Requirements & Qualifications
+                {tender.specialConditions && (
+                  <div>
+                    <h3 className="text-lg font-bold text-[var(--foreground)] border-b border-[var(--border)] pb-2 mb-3 flex items-center gap-2">
+                      <ShieldAlert className="w-5 h-5 text-amber-500" />
+                      <span>Special Conditions</span>
+                    </h3>
+                    <p className="text-sm text-[var(--foreground)] leading-relaxed">
+                      {tender.specialConditions}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Documents Section */}
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 relative shadow-xs">
+              <h2 className="text-xl font-bold text-[var(--foreground)] border-b border-[var(--border)] pb-3 mb-4 flex items-center justify-between">
+                <span>Specification Documents</span>
+                <span className="text-xs font-normal text-[var(--muted)]">
+                  {tender.documents?.length || 0} File(s)
+                </span>
               </h2>
-              {hasAccess ? (
-                <p className="text-[var(--foreground)] leading-relaxed whitespace-pre-line">
-                  {/* {tender.requirements || "No specific qualifications requirements listed."} */}
-                </p>
-              ) : (
-                <div className="space-y-3 blur-xs select-none font-mono">
-                  <p className="text-[var(--muted)]">
-                    - Minimum 5 years of active state licensing in the specific domain.
-                  </p>
-                  <p className="text-[var(--muted)]">
-                    - Underwriters Laboratory certification and bonding capacity of $1,000,000.
-                  </p>
-                  <p className="text-[var(--muted)]">
-                    - Proof of past successful government projects within the region.
-                  </p>
+
+              {tender.documents && tender.documents.length > 0 ? (
+                <div className="space-y-3">
+                  {tender.documents.map((doc: any) => (
+                    <div
+                      key={doc.id}
+                      className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)]/50 flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-6 h-6 text-[#003EC7] shrink-0" />
+                        <div>
+                          <h5 className="text-sm font-bold text-[var(--foreground)]">
+                            {doc.originalName ||
+                              doc.documentType ||
+                              "Tender Specification PDF"}
+                          </h5>
+                          <span className="text-xs text-[var(--muted)]">
+                            {doc.fileSize
+                              ? `${(doc.fileSize / 1024 / 1024).toFixed(2)} MB`
+                              : "Official PDF"}{" "}
+                            • Status: {doc.virusScanStatus || "Clean"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {hasAccess ? (
+                        <button
+                          onClick={handleDownload}
+                          className="px-4 py-2 bg-[#003EC7] text-white text-xs font-bold rounded-lg hover:bg-[#002fad] transition-all cursor-pointer"
+                        >
+                          Download
+                        </button>
+                      ) : (
+                        <span className="text-xs font-bold text-amber-600 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-md flex items-center gap-1">
+                          <Lock className="w-3 h-3" /> Locked
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
+              ) : (
+                <p className="text-sm text-[var(--muted)]">
+                  No public documents uploaded for this tender specification
+                  yet.
+                </p>
               )}
+
               {!hasAccess && (
-                <div className="absolute inset-0 bg-[var(--surface)]/70 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center p-6 text-center">
-                  <span className="text-3xl mb-2">🔒</span>
-                  <h4 className="font-bold text-sm text-[var(--foreground)]">
-                    Qualifications are locked
-                  </h4>
-                  <p className="text-xs text-[var(--muted)] max-w-xs mt-1">
-                    Vendor compliance conditions are visible to authorized subscribers only.
-                  </p>
+                <div className="mt-6 p-4 rounded-xl bg-[#003EC7]/5 border border-[#003EC7]/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-left">
+                    <h5 className="text-sm font-bold text-[var(--foreground)]">
+                      Want to download official RFP specification files &
+                      contact emails?
+                    </h5>
+                    <p className="text-xs text-[var(--muted)]">
+                      Subscribe to an active RFPNexa membership plan to get
+                      instant unrestricted access.
+                    </p>
+                  </div>
+                  <Link
+                    href={
+                      user ? "/pricing" : `/login?redirect=/tenders/${slug}`
+                    }
+                    className="px-5 py-2.5 bg-[#003EC7] hover:bg-[#002fad] text-white text-xs font-bold rounded-xl whitespace-nowrap"
+                  >
+                    Subscribe Now
+                  </Link>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar Info Column */}
           <div className="lg:col-span-4 space-y-6">
-            {/* Procurement Details Card */}
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-xs">
-              <h3 className="font-bold text-lg text-[var(--foreground)] border-b border-[var(--border)] pb-3 mb-4">
-                Procurement Summary
+            {/* Summary Card */}
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-xs space-y-5">
+              <h3 className="font-bold text-lg text-[var(--foreground)] border-b border-[var(--border)] pb-3">
+                Key Procurement Metrics
               </h3>
 
-              <div className="space-y-4">
-                <div>
-                  <span className="block text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    Estimated Budget
-                  </span>
-                  <span className="text-2xl font-extrabold text-[#003EC7]">
-                    {formattedBudget}
-                  </span>
-                </div>
+              <div>
+                <span className="block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                  Estimated Budget
+                </span>
+                <span className="text-3xl font-extrabold text-[#003EC7]">
+                  {formattedBudget}
+                </span>
+              </div>
 
-                <div>
-                  <span className="block text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    Days Remaining
-                  </span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-lg font-bold text-red-500">
-                      {daysLeft} Days
-                    </span>
-                    <span className="text-xs text-[var(--muted)]">
-                      ({new Date(tender.deadline).toLocaleDateString()})
-                    </span>
+              <div>
+                <span className="block text-xs font-bold uppercase tracking-wider text-[var(--muted)] mb-1">
+                  Time Remaining
+                </span>
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 font-bold text-sm">
+                    {daysLeft} Days Left
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <span className="block text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    Submission Type
-                  </span>
-                  <span className="text-sm font-medium text-[var(--foreground)] capitalize">
-                    {tender.submissionType}
-                  </span>
+              <div className="space-y-3 pt-2 border-t border-[var(--border)] text-xs font-medium text-[var(--foreground)]">
+                <div className="flex justify-between">
+                  <span className="text-[var(--muted)]">Opening Date:</span>
+                  <span className="font-bold">{postedDate}</span>
                 </div>
-
-                <div>
-                  <span className="block text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    Date Published
-                  </span>
-                  <span className="text-sm font-medium text-[var(--foreground)]">
-                    {postedDate}
-                  </span>
+                <div className="flex justify-between">
+                  <span className="text-[var(--muted)]">Closing Date:</span>
+                  <span className="font-bold">{closingDateFormatted}</span>
                 </div>
-
-                <div>
-                  <span className="block text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    City / Region
-                  </span>
-                  <span className="text-sm font-medium text-[var(--foreground)]">
-                    {tender.city || "Statewide"}, {tender.state?.code}
-                  </span>
-                </div>
+                {tender.procurementType && (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--muted)]">
+                      Procurement Type:
+                    </span>
+                    <span className="font-bold capitalize">
+                      {tender.procurementType}
+                    </span>
+                  </div>
+                )}
+                {tender.bidValidity && (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--muted)]">Bid Validity:</span>
+                    <span className="font-bold">{tender.bidValidity} Days</span>
+                  </div>
+                )}
+                {tender.emdAmount !== undefined && tender.emdAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--muted)]">EMD Amount:</span>
+                    <span className="font-bold">
+                      ${tender.emdAmount.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                {tender.siteVisitRequired && (
+                  <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                    <span>Site Visit Required:</span>
+                    <span className="font-bold">Yes</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Locked Prompt sidebar widget */}
-            {!hasAccess && (
-              <div className="bg-[#003EC7]/5 border border-[#003EC7]/20 rounded-2xl p-6 text-center">
-                <span className="text-4xl block mb-3">💎</span>
-                <h4 className="font-extrabold text-[var(--foreground)]">
-                  Upgrade to Premium
-                </h4>
-                <p className="text-xs text-[var(--muted)] mt-2 leading-relaxed">
-                  Gain instant access to original procurement tender documents, contact email addresses, bid phone numbers, and full scope documents.
-                </p>
-                <Link
-                  href={
-                    user
-                      ? "/pricing"
-                      : `/login?redirect=/tenders/${slug}`
-                  }
-                  className="mt-5 block w-full py-3 bg-[#003EC7] hover:bg-[#002fad] text-white text-xs font-bold rounded-xl shadow-xs transition-all"
-                >
-                  {user ? "View Pricing Plans" : "Log In & Subscribe"}
-                </Link>
-              </div>
-            )}
+            {/* Contact Person Card */}
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-xs relative">
+              <h3 className="font-bold text-lg text-[var(--foreground)] border-b border-[var(--border)] pb-3 mb-4">
+                Contact & Nodal Officer
+              </h3>
+
+              {hasAccess ? (
+                <div className="space-y-3 text-sm text-[var(--foreground)]">
+                  <div>
+                    <span className="text-xs text-[var(--muted)] block">
+                      Contact Person
+                    </span>
+                    <span className="font-bold">
+                      {tender.contactPerson || "Procurement Officer"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-[var(--muted)] block">
+                      Email Address
+                    </span>
+                    <span className="font-bold text-[#003EC7]">
+                      {tender.contactEmail || "N/A"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-[var(--muted)] block">
+                      Phone Number
+                    </span>
+                    <span className="font-bold">
+                      {tender.contactPhone || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <h5 className="font-bold text-sm text-[var(--foreground)]">
+                    Contact Details Locked
+                  </h5>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    Official officer email IDs, direct phone extensions, and
+                    contact names are visible exclusively to subscribed members.
+                  </p>
+                  <Link
+                    href={
+                      user ? "/pricing" : `/login?redirect=/tenders/${slug}`
+                    }
+                    className="mt-2 block w-full py-2.5 bg-[#003EC7] text-white text-xs font-bold rounded-xl shadow-xs"
+                  >
+                    Unlock Officer Contacts
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
